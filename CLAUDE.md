@@ -11,7 +11,13 @@ Before writing any code, read:
 - Brain 3 scoring is deterministic; never score with an LLM.
 - Every Claude response passes the three-check output validator before reaching the trainee.
 - No hardcoded clinical values: load from the dataset; label constants SOURCE / DERIVED / PLACEHOLDER.
-- Never commit MIMIC-IV-ED data (PhysioNet DUA).
+- Never commit MIMIC-IV-ED data (PhysioNet DUA). The repo is public: only aggregate outputs in `data/derived/` (cells >= 10 stays, no IDs).
+- Concurrency: one asyncio `PatientActor` per patient; no threads (spec section 9).
+- No disease-specific logic outside `emergisim/brain2/<disease>/` (spec section 15).
 - Multiplayer is out of scope; don't add or mention it.
 - Don't use em dashes in written docs or responses.
 - Cite every claim in academic documents; don't overclaim.
+
+## Commands
+- Tests: `python -m pytest`
+- Rebuild derived vitals/profiles (needs local MIMIC JSON): `python -m tools.build_anaphylaxis_derived`

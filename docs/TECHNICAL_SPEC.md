@@ -37,11 +37,13 @@ This is the most important architectural rule. Never mix these responsibilities.
 
 **How it learns:** PPO (Proximal Policy Optimization). The state vector comes from the Performance Monitor. The reward signal comes from the Brain 3 summary at rollout end. Curriculum learning (Bengio et al., 2009) addresses the cold start: training begins with easy scenarios and difficulty increases as the policy improves.
 
-**Reward signals (per rollout, not per action):**
-- +1.0 if epinephrine was given while the patient was still in early_reaction
+**Reward signals (per rollout, not per action; disease-agnostic, see section 15):**
+- +1.0 per patient whose disease's key intervention was given before that patient left its first active state (for anaphylaxis: ANA-004 while still in early_reaction)
 - -1.0 if any patient reached scenario_end
 - -0.3 per contraindicated action taken
 - 0.0 otherwise
+
+Values live in `config.py` (`REWARD_*`, PLACEHOLDER).
 
 **State vector inputs from the Performance Monitor:**
 - Triage accuracy (did the trainee prioritise the most critical patient)
@@ -78,7 +80,7 @@ This is the most important architectural rule. Never mix these responsibilities.
 **Deterministic scoring component:** Calculates all metrics from the action log. No LLM is involved in scoring. This safety design decision prevents hallucinated evaluation scores.
 
 **Six metrics calculated deterministically:**
-1. Time to first epinephrine (seconds from session start)
+1. Time to first key intervention, per patient (seconds from that patient's presentation; for anaphylaxis: first ANA-004). The key intervention per disease comes from that disease's `Key_Interventions` sheet (section 15).
 2. Protocol adherence rate per FSM state (correct actions / required actions)
 3. Triage accuracy (did the trainee visit the most critical patient first)
 4. Response latency (time from state transition event to trainee action)
@@ -131,6 +133,29 @@ Source 2: MIMIC-IV-ED real patient records.
 - `Vitals_Template`: vital sign ranges (filled from MIMIC-IV-ED)
 
 **Vitals calculation rule:** Never hardcode vital sign ranges. Calculate them from the MIMIC-IV-ED JSON using the 25th to 75th percentile per FSM state. Classify patients into states using WAO clinical thresholds (SBP < 90 = cardiovascular_collapse; SpO2 < 92 or HR > 120 = airway_compromise; everything else = early_reaction). Do not fill by state (circular reasoning). Use forward/backward fill with an 8-hour cap for missing values.
+
+**Implementation (done):** `emergisim/brain2/loaders/json_loader.py`, run through `python -m tools.build_anaphylaxis_derived`.
+- Implausible values (for example SBP 0 to 20 from a failed cuff read) are blanked before filling, using `config.VITALS_PLAUSIBLE` (DERIVED).
+- Aggregation is a median per (stay, state), then percentiles across stays, so long stays do not dominate.
+- Cohort: confirmed anaphylaxis (ICD T78.0x or T78.2, 169 stays) where a state has at least 10 stays. Otherwise the full allergy pool (1056 stays).
+- `stable` is DERIVED as the last observation of stays discharged home that classify as early_reaction. WAO defines no stable vitals.
+- Output: `data/derived/anaphylaxis_vitals.json`. Copy p25/p75 into Vitals_Template min/max.
+
+**Results and limitations (state these in the report):**
+
+| State | Cohort | Stays | HR p50 | SBP p50 | SpO2 p50 |
+|---|---|---|---|---|---|
+| early_reaction | confirmed | 167 | 89 | 125 | 99 |
+| airway_compromise | confirmed | 32 | 128 | 131 | 98 |
+| cardiovascular_collapse | allergy pool | 15 | 88 | 86 | 99 |
+| stable (derived) | confirmed | 144 | 80.5 | 116 | 99 |
+
+- Fewer than 10 confirmed stays ever reach collapse, so the collapse row uses the wider pool. It shows mild hypotension (SBP 84.5 to 88), not profound shock. Patients mostly arrive treated, and severe cases go straight to resuscitation. The FSM's deterioration toward arrest (SBP < 50) is therefore a design extrapolation, not data.
+- In the data, the airway_compromise proxy is driven by HR > 120 (median SpO2 98). It captures tachycardia more than hypoxia.
+- MIMIC-IV-ED has no age or weight. These are design inputs in the profiles. They could come from MIMIC-IV `hosp.patients.anchor_age` joined on subject_id.
+- Asthma is not readable from ICD (the extract keeps only T78 codes). An inhaled asthma/COPD home medication is used as a DERIVED proxy.
+
+**Privacy (the repo is public):** the raw JSON is git-ignored. Committed derivatives hold only aggregates, with any cell under 10 stays suppressed and no identifiers or timestamps. A test enforces this (`tests/test_data_layer.py`).
 
 ---
 
@@ -231,30 +256,29 @@ Applies in: all states.
 EXCEPT: in airway_compromise, when the patient has respiratory_distress = True, sitting up is acceptable (RCUK p.26, F-09).
 In cardiovascular_collapse, C-04 applies with NO exemption (F-09 update).
 
-**Time penalties:** All placeholder values (F-24 still open). Marked as PLACEHOLDER in code with an "expert validation required" comment. Current values: C-01 = 20s, C-02 = 15s, C-03 = 25s, C-04 = 20s.
+**Time penalties:** read from `Contraindicated.time_penalty_seconds`. That column is blank because F-24 is still open: no guideline gives a numeric value. Until an expert or an authentic source supplies one, the loader falls back to `config.CONTRAINDICATION_PENALTY_FALLBACK_S` (C-01 = 20s, C-02 = 15s, C-03 = 25s, C-04 = 20s) and tags each value `PLACEHOLDER: F-24`. Once the sheet is filled, the sheet wins automatically. The pacing windows (F-23) work the same way.
 
 ### 4.6 Response probability model (D1: Option C, Worm 2018)
 
 Applies only to ANA-004 (IM epinephrine), the only action that triggers a response check.
 
 ```python
-base_probability = 0.82  # from WAO G-10 "most respond to 1-2 doses"; PLACEHOLDER
-
-# Apply Worm 2018 Table 1 odds ratios
-# Each cofactor reduces probability: p = p / (1 + (OR - 1) * 0.3)
-cofactor_odds_ratios = {
-    "beta_blocker":    2.4,
-    "exercise":        2.0,
-    "nsaid":           1.8,
-    "ace_inhibitor":   1.9,
-    "cardiovascular":  1.7,
-    "asthma":          1.6,
-    "alcohol":         1.5,
-}
-
-# Second dose: multiply by 0.7 (diminishing returns)
-# Result: stochastic; random.random() < probability
+p = RESPONSE_BASE_PROBABILITY            # 0.82, PLACEHOLDER (WAO G-10 "most respond to 1-2 doses")
+for OR in applicable Worm2018_Modifiers rows (95% CI excludes 1):
+    p = p / (1 + (OR - 1) * RESPONSE_OR_DAMPING)   # k = 0.3, PLACEHOLDER
+if dose_number >= 2:
+    p *= RESPONSE_SECOND_DOSE_FACTOR      # 0.7, PLACEHOLDER
+p = clamp(p, 0.05, 0.99)                  # result: random.random() < p
 ```
+
+**Resolved (P1):** odds ratios are read from the `Worm2018_Modifiers` sheet (`emergisim/brain2/anaphylaxis/response_model.py`), never from code. The earlier inline table in this spec (beta-blocker 2.4, NSAID 1.8, ...) did not match Worm 2018 and has been removed: the paper reports beta-blocker 1.857 (Ring & Messmer model), and NSAIDs, alcohol and cardiovascular disease are not in Table 1.
+
+- Model: `config.WORM_MODEL = "RingMessmer"` (a severity grading). Rows marked "Not used" in that model have no effect, rather than borrowing the other model's OR.
+- Only rows whose 95% CI excludes 1 are applied. That excludes food and insect elicitors in Ring & Messmer.
+- Age uses the per-year OR as `OR ** (age - 30)`, with reference age 30 as a PLACEHOLDER.
+- **Modelling assumption to state in the report:** Worm 2018 gives odds of a *severe reaction*, not of *non-response to epinephrine*. Mapping one onto the other through k is our design choice, for expert validation.
+
+Resulting first-dose probabilities: ANA-P1 0.85, P2 0.87, P3 0.71, P4 0.77, P5 0.26, P6 0.36, P7 0.27.
 
 If the response probability check passes, physiology shifts toward stable ranges (gradually, recovery_rate = 0.4). Reassessment then checks the stable criteria.
 
@@ -478,7 +502,19 @@ The last 5 pairs of turns (10 messages) are passed as conversation history on ea
 
 Up to 6 or 7 profiles with easy, medium and hard parameters.
 
-**Anaphylaxis profiles:** to be decided.
+**Anaphylaxis profiles (resolved, P6):** 7 synthetic archetypes in `data/derived/anaphylaxis_profiles.json`, built by `tools/build_anaphylaxis_derived.py`. Presenting vitals are the MIMIC-IV-ED p50 for the start state. Baseline SBP is the derived stable p50. Each profile cites the pool prevalence of the features it uses. Identities are invented; no profile copies a real patient.
+
+| ID | Difficulty | Start state | Sex / age (design) | Trigger | Key features | P(respond), dose 1 |
+|---|---|---|---|---|---|---|
+| ANA-P1 | easy | early_reaction | F / 24 | food (peanut) | none | 0.85 |
+| ANA-P2 | easy | early_reaction | F / 19 | food (tree nut) | prior anaphylaxis, has auto-injector | 0.87 |
+| ANA-P3 | medium | early_reaction | F / 33 | food (shellfish) | asthma (14.3% of pool via proxy) | 0.71 |
+| ANA-P4 | medium | airway_compromise | F / 41 | food (sesame) | ambulance arrival (28.3%) | 0.77 |
+| ANA-P5 | hard | airway_compromise | M / 52 | drug (antibiotic) | male, asthma, psychological burden | 0.26 |
+| ANA-P6 | hard | cardiovascular_collapse, conscious | F / 67 | drug (NSAID) | beta-blocker (8.4%), ACE-I (11.6%) | 0.36 |
+| ANA-P7 | hard | cardiovascular_collapse, unconscious | M / 74 | drug (IV contrast) | beta-blocker, male, elderly | 0.27 |
+
+2 of 7 profiles are male, close to the 33% male share in the data. Age and weight are PLACEHOLDER (not in MIMIC-IV-ED). Difficulty comes from three levers: start state, Worm 2018 modifiers (response probability) and collapse variant.
 
 Brain 1 assigns harder profiles as trainee performance improves across a session.
 
@@ -488,7 +524,16 @@ Brain 1 assigns harder profiles as trainee performance improves across a session
 
 **Backend:** FastAPI with WebSocket. Single entry point for all real-time communication. No AI logic in the backend: pure routing and orchestration.
 
-**FSM library:** Python `transitions`. Four FSM instances running in parallel threads, each thread-safe with its own `threading.Lock()`. Concurrency is handled by an async event queue (FIFO ordering for simultaneous timer events).
+**FSM library:** Python `transitions`. Four FSM instances run concurrently as **asyncio actors** on FastAPI's single event loop (`emergisim/core/patient_actor.py`). There are no threads.
+
+**Concurrency model (resolved, P3).** Threads plus `threading.Lock()` alongside FastAPI's asyncio loop risked deadlocks and unsafe cross-thread calls into the loop. Replaced by:
+- **One actor per patient.** Each patient has an `asyncio.Queue` inbox and a single consumer task. Trainee actions, timer expiries, Brain 1 multiplier changes and penalties are all events in that queue. They are applied one at a time in FIFO order, so transitions are atomic without any lock, and the four patients never block each other.
+- **The clock only posts events.** `PacingClock` uses `loop.call_later` and never mutates state. Each pacing window has an **epoch**. A new state starts a new epoch, so an expiry queued just behind a correct action is recognised as stale and discarded. This closes the "timer fires right after the epinephrine" race.
+- **Slow I/O stays outside the handler.** Claude and Whisper calls use the async SDK clients in a side task, built from an immutable snapshot. If the epoch changed while Claude was generating, the reply is dropped and regenerated, so dialogue can never describe a state the patient has already left.
+- **CPU-bound work** (PPO policy inference) runs through `asyncio.to_thread`.
+- Penalties shorten the current window (same epoch). A Brain 1 multiplier change rescales the remaining time and applies to later windows.
+
+Covered by `tests/test_patient_actor.py`: ordered deterioration, cancel-on-correct-action, stale-expiry discard, penalty, multiplier, four independent patients and stale-dialogue detection.
 
 **RL library:** Stable-Baselines3 with Gymnasium. The `SimulatedEREnvironment` class wraps the four FSM instances. PPO algorithm. A one-hot encoded FSM state vector is fed to the PPO policy.
 
@@ -529,6 +574,7 @@ BRAIN3_WEIGHTS = {
 
 - Response probability base = 0.82 (PLACEHOLDER; expert to validate)
 - Recovery rate = 0.4 per tick (PLACEHOLDER; expert to validate)
+- Deterioration rate = 0.6 per expired window (PLACEHOLDER; expert to validate)
 - Arrest detection SBP threshold = 50 mmHg (PLACEHOLDER; expert to validate)
 
 ---
@@ -603,15 +649,21 @@ emergisim/
     scorer.py             # Deterministic metric calculation
     narrative.py          # Claude narrative generation
     summary.py            # Full session report builder
+  core/
+    patient_actor.py      # PatientActor + PacingClock (asyncio, section 9)
   backend/
     main.py               # FastAPI app, WebSocket handler
     session.py            # Session orchestration
     monitor.py            # Performance monitor
-  data/
-    EMERGISIM_Anaphylaxis_Dataset_FINAL_v9.xlsx
-    Anaphylaxis_dataset.json   # MIMIC-derived: local only, never committed
   config.py               # All constants with PLACEHOLDER comments
-  requirements.txt
+data/
+  EMERGISIM_Anaphylaxis_Dataset_FINAL_v9.xlsx
+  Anaphylaxis_dataset.json     # MIMIC-derived: local only, never committed
+  derived/                     # aggregate-only outputs, committed
+tools/
+  build_anaphylaxis_derived.py # MIMIC -> vitals + profiles
+tests/
+requirements.txt
 ```
 
 ---
@@ -622,7 +674,7 @@ emergisim/
 2. Every PLACEHOLDER constant must have a comment: `# PLACEHOLDER: [what it represents]; expert validation required (F-XX open flag)`.
 3. Every clinical value loaded from the dataset must have a comment: `# SOURCE: [sheet name] [column]; [guideline citation]`.
 4. All FSM state transitions are atomic. Either they complete fully or they do not happen. No half-states are possible.
-5. Threading: every FSM instance has its own `threading.Lock()`. Timer callbacks acquire the lock before any state mutation. No naked shared state.
+5. Concurrency: every patient runs as a `PatientActor` (section 9). State is mutated only inside that actor's event handler. Timers post events and never mutate. No threads, and no state shared between patients.
 6. The output validator runs before every Claude response reaches the trainee. No exceptions.
 7. Brain 1 can only call `fsm.set_brain1_multiplier(value)`. It cannot call any other FSM method or read raw physiological values. It receives only the processed state vector from the Performance Monitor.
 8. Claude receives only the output of `build_system_prompt()`. It never receives raw simulator state, vital sign numbers, FSM state labels, WAO grades, or diagnosis names.
@@ -632,13 +684,68 @@ emergisim/
 
 ---
 
-## 14. Review notes: inconsistencies to resolve before coding
+## 14. Review notes: status
 
-Found while consolidating this spec. These need a team decision; until then, follow the spec as written.
+| # | Issue | Status |
+|---|---|---|
+| 1 | Hardcoded vs dataset values | **Resolved.** Loaders read the Worm2018_Modifiers, Contraindicated and Transitions sheets. Blank cells fall back to tagged `config.py` placeholders. F-23 (timers) and F-24 (penalties) still need expert or authentic values; no guideline gives them. |
+| 2 | Anaphylaxis-only reward and metric | **Resolved in design.** Generic "key intervention" reward and metric (sections 2, 15). Other diseases need their `Key_Interventions` sheets. |
+| 3 | Threads plus asyncio | **Resolved.** Per-patient asyncio actor with epoch-guarded timers (section 9). |
+| 4 | Older model ID | **Open.** Kept in `config.LLM_MODEL`; re-evaluate before Brain 2 integration. |
+| 5 | Deterioration rate unlabelled | **Resolved.** Added to section 10 and `config.py`. |
+| 6 | Patient profiles undefined | **Resolved for anaphylaxis** (section 8). |
+| 7 | Worm 2018 odds ratios in this spec did not match the paper | **Resolved.** Inline table removed; values come from the sheet (4.6). |
+| 8 | MIMIC collapse data is thin and mild | **Open (limitation).** State it in the report (section 3). |
+| 9 | MIMIC-IV-ED has no lab values | **Open (dataset blocker for 3 diseases).** See section 15. |
 
-1. **Hardcoded vs dataset values.** Rule 1 says every value loads from Excel, but 4.5, 4.6, 4.10 and 4.11 list values inline (odds ratios, penalties, pacing windows, rates). Proposed resolution: the loader reads the `Worm2018_Modifiers`, `Contraindicated` and `Transitions` sheets first and falls back to a `config.py` PLACEHOLDER only when the sheet cell is empty.
-2. **Anaphylaxis-specific Brain 1 reward and Brain 3 metric.** The reward (+1.0 for epi in early_reaction) and metric 1 (time to first epinephrine) only make sense for anaphylaxis. Each disease needs its own "key early intervention" (for example aspirin/ECG for MI, glucose for hypoglycemia, fluids/insulin for DKA), ideally defined in each disease's dataset.
-3. **Threads plus asyncio.** FastAPI runs on asyncio, and mixing `threading.Lock()` timers with an async event queue invites deadlocks and cross-thread event-loop calls. Consider running the FSM timers as asyncio tasks with an `asyncio.Lock()` per instance. That keeps the per-instance locking and FIFO guarantees and stays on one event loop.
-4. **Model version.** `claude-sonnet-4-20250514` is an older model. Re-run the AgentClinic-style comparison against current Claude models before locking it in, and keep the model ID in `config.py`.
-5. **Deterioration rate** (0.6 in 4.10) is not in the PLACEHOLDER list in section 10; label it.
-6. **Patient profiles** (section 8) are undefined, but Brain 1's curriculum depends on them, so define them before Brain 1 training.
+---
+
+## 15. Disease module contract (P2)
+
+Every disease plugs into the same engine. Nothing in Brain 1, Brain 3, the actor or the validator may mention a specific disease. Disease specifics come only from that disease's workbook, using the anaphylaxis workbook's sheet layout, plus one new sheet.
+
+### 15.1 Required workbook sheets (per disease)
+
+Same names and columns as the anaphylaxis v9 workbook: `States`, `State_Actions`, `Transitions`, `State_Symptoms`, `State_Communication`, `Contraindicated`, `Action_Aliases`, `Hints`, `Observable_Signs`, `Patient_Profile_Schema`, `State_Variables`, `Global_Rules`, `Bundle_Sequence`, `Vitals_Template`, `Post_Stable_Brain3`.
+
+Action IDs are prefixed per disease: `ANA-`, `MI-`, `HYPO-`, `DKA-`. Contraindication IDs: `C-ANA-01`, `C-MI-01`, and so on (the existing C-01 to C-04 map to C-ANA-01 to C-ANA-04 when the second disease lands).
+
+**New sheet `Key_Interventions`** (drives the Brain 1 reward and Brain 3 metric 1):
+
+| column | meaning |
+|---|---|
+| key_id | e.g. `KI-ANA-01` |
+| action_id | the action that counts |
+| must_be_given_before_leaving | state; giving it while still in this state earns the reward |
+| gating_condition | optional precondition (e.g. potassium >= 3.5 for insulin) |
+| source | guideline + page |
+
+Anaphylaxis: `KI-ANA-01 | ANA-004 | early_reaction | none | RCUK 2021 Fig. 6 p.25; WAO 2020 p.15`.
+
+### 15.2 Candidate key interventions for the other diseases
+
+**Candidates only.** Javeria/the team must verify each against the guideline PDF and record the exact page before it enters a workbook.
+
+| Disease | Candidate key intervention | Guideline to verify against |
+|---|---|---|
+| MI | 12-lead ECG within 10 min of first contact; then aspirin loading dose | ESC 2023 ACS Guidelines |
+| Hypoglycemia | Fast-acting glucose 15 to 20 g if conscious and able to swallow; glucagon or IV dextrose if not | ADA Standards of Care (section 6) |
+| Hyperglycemia/DKA | IV fluids first; insulin only once potassium >= 3.5 mmol/L (insulin with low K+ = contraindicated) | ADA/EASD/JBDS/AACE/DTS 2024 Hyperglycemic Crises consensus |
+
+DKA shows why `gating_condition` exists: the same action (insulin) is correct or contraindicated depending on a lab value.
+
+### 15.3 Code interface
+
+Each disease package (`emergisim/brain2/<disease>/`) provides a model satisfying `PatientModel` in `emergisim/core/patient_actor.py` (`handle_action`, `handle_timer_expiry`, `pacing_window_s`, `penalty_s`, `snapshot`), plus:
+- `key_interventions()`: loaded from the `Key_Interventions` sheet
+- `response_model(action_id, profile, dose_number)`: disease-specific. Anaphylaxis uses Worm 2018. Others may be deterministic until a sourced model exists.
+- `classify_state(vitals, labs)`: the rule used to derive vitals from MIMIC
+
+### 15.4 Dataset blocker: labs
+
+MIMIC-IV-ED has vitals, triage, diagnoses and medications, but **no laboratory values**. Hypoglycemia and DKA states are defined by glucose, ketones, pH and bicarbonate; MI by troponin and ECG. The anaphylaxis approach (state from vitals) therefore cannot be copied directly. Options for Javeria:
+1. Join MIMIC-IV `hosp.labevents` on `hadm_id`. This works only for admitted stays, which biases toward sicker patients.
+2. Use MIMIC-IV-ECG (separate PhysioNet module) for MI.
+3. Take state thresholds from the guidelines (ADA glucose levels; DKA severity table) and use MIMIC-IV-ED only for the accompanying vitals per ICD code.
+
+Option 3 is the most realistic for the timeline; 1 and 2 are stronger if time allows.

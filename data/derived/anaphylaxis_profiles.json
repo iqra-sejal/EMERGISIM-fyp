@@ -1,0 +1,278 @@
+{
+  "description": "Synthetic anaphylaxis patient profiles. Vitals and prevalence evidence are MIMIC-IV-ED aggregates; identities are invented. No profile corresponds to a real patient.",
+  "generated": "2026-10-01",
+  "profiles": [
+    {
+      "profile_id": "ANA-P1",
+      "difficulty": "easy",
+      "start_state": "early_reaction",
+      "sex": "female",
+      "age_years": 24,
+      "weight_kg": 60,
+      "trigger_group": "food",
+      "trigger_item": "peanut",
+      "baseline_sbp": 116.0,
+      "presenting_vitals": {
+        "hr": 89.0,
+        "rr": 18.0,
+        "spo2": 99.0,
+        "sbp": 125.0,
+        "dbp": 72.5,
+        "temp_f": 98.1
+      },
+      "evidence": {
+        "presenting_vitals": "p50 of early_reaction (confirmed_anaphylaxis, n_stays=167)",
+        "baseline_sbp": "p50 of derived stable vitals",
+        "age_weight": "PLACEHOLDER: not in MIMIC-IV-ED",
+        "feature_prevalence_allergy_pool": {
+          "food_anaphylaxis_icd": {
+            "n": 109,
+            "pct": 10.3
+          }
+        },
+        "rationale": "Most common confirmed presentation: food-triggered, early state, no cofactors."
+      }
+    },
+    {
+      "profile_id": "ANA-P2",
+      "difficulty": "easy",
+      "start_state": "early_reaction",
+      "sex": "female",
+      "age_years": 19,
+      "weight_kg": 58,
+      "trigger_group": "food",
+      "trigger_item": "tree nut",
+      "prior_anaphylaxis": true,
+      "has_epinephrine_autoinjector": true,
+      "baseline_sbp": 116.0,
+      "presenting_vitals": {
+        "hr": 89.0,
+        "rr": 18.0,
+        "spo2": 99.0,
+        "sbp": 125.0,
+        "dbp": 72.5,
+        "temp_f": 98.1
+      },
+      "evidence": {
+        "presenting_vitals": "p50 of early_reaction (confirmed_anaphylaxis, n_stays=167)",
+        "baseline_sbp": "p50 of derived stable vitals",
+        "age_weight": "PLACEHOLDER: not in MIMIC-IV-ED",
+        "feature_prevalence_allergy_pool": {
+          "food_anaphylaxis_icd": {
+            "n": 109,
+            "pct": 10.3
+          }
+        },
+        "rationale": "Known allergy with an auto-injector; a cooperative historian."
+      }
+    },
+    {
+      "profile_id": "ANA-P3",
+      "difficulty": "medium",
+      "start_state": "early_reaction",
+      "sex": "female",
+      "age_years": 33,
+      "weight_kg": 65,
+      "trigger_group": "food",
+      "trigger_item": "shellfish",
+      "concomitant_diseases": [
+        "asthma"
+      ],
+      "baseline_sbp": 116.0,
+      "presenting_vitals": {
+        "hr": 89.0,
+        "rr": 18.0,
+        "spo2": 99.0,
+        "sbp": 125.0,
+        "dbp": 72.5,
+        "temp_f": 98.1
+      },
+      "evidence": {
+        "presenting_vitals": "p50 of early_reaction (confirmed_anaphylaxis, n_stays=167)",
+        "baseline_sbp": "p50 of derived stable vitals",
+        "age_weight": "PLACEHOLDER: not in MIMIC-IV-ED",
+        "feature_prevalence_allergy_pool": {
+          "asthma_proxy": {
+            "n": 151,
+            "pct": 14.3
+          }
+        },
+        "rationale": "Asthma raises severity odds (Worm 2018, R&M OR 1.425) and adds early wheeze."
+      }
+    },
+    {
+      "profile_id": "ANA-P4",
+      "difficulty": "medium",
+      "start_state": "airway_compromise",
+      "sex": "female",
+      "age_years": 41,
+      "weight_kg": 70,
+      "trigger_group": "food",
+      "trigger_item": "sesame",
+      "arrival_transport": "AMBULANCE",
+      "baseline_sbp": 116.0,
+      "presenting_vitals": {
+        "hr": 128.0,
+        "rr": 20.0,
+        "spo2": 98.0,
+        "sbp": 131.0,
+        "dbp": 78.0,
+        "temp_f": 98.2
+      },
+      "evidence": {
+        "presenting_vitals": "p50 of airway_compromise (confirmed_anaphylaxis, n_stays=32)",
+        "baseline_sbp": "p50 of derived stable vitals",
+        "age_weight": "PLACEHOLDER: not in MIMIC-IV-ED",
+        "feature_prevalence_allergy_pool": {
+          "ambulance_arrival": {
+            "n": 299,
+            "pct": 28.3
+          }
+        },
+        "rationale": "Starts one state further on: less time before collapse."
+      }
+    },
+    {
+      "profile_id": "ANA-P5",
+      "difficulty": "hard",
+      "start_state": "airway_compromise",
+      "sex": "male",
+      "age_years": 52,
+      "weight_kg": 85,
+      "trigger_group": "drug",
+      "trigger_item": "antibiotic",
+      "concomitant_diseases": [
+        "asthma"
+      ],
+      "cofactors": [
+        "psychological burden"
+      ],
+      "arrival_transport": "AMBULANCE",
+      "baseline_sbp": 116.0,
+      "presenting_vitals": {
+        "hr": 128.0,
+        "rr": 20.0,
+        "spo2": 98.0,
+        "sbp": 131.0,
+        "dbp": 78.0,
+        "temp_f": 98.2
+      },
+      "evidence": {
+        "presenting_vitals": "p50 of airway_compromise (confirmed_anaphylaxis, n_stays=32)",
+        "baseline_sbp": "p50 of derived stable vitals",
+        "age_weight": "PLACEHOLDER: not in MIMIC-IV-ED",
+        "feature_prevalence_allergy_pool": {
+          "asthma_proxy": {
+            "n": 151,
+            "pct": 14.3
+          },
+          "male": {
+            "n": 348,
+            "pct": 33.0
+          },
+          "ambulance_arrival": {
+            "n": 299,
+            "pct": 28.3
+          }
+        },
+        "rationale": "Several significant Worm 2018 modifiers stack (male, asthma, drug elicitor, psychological burden)."
+      }
+    },
+    {
+      "profile_id": "ANA-P6",
+      "difficulty": "hard",
+      "start_state": "cardiovascular_collapse",
+      "sex": "female",
+      "age_years": 67,
+      "weight_kg": 74,
+      "trigger_group": "drug",
+      "trigger_item": "NSAID",
+      "on_beta_blocker": true,
+      "concurrent_medication": [
+        "beta-blockers",
+        "ACE inhibitor",
+        "NSAIDs"
+      ],
+      "collapse_variant": "conscious_hypotensive",
+      "arrival_transport": "AMBULANCE",
+      "baseline_sbp": 116.0,
+      "presenting_vitals": {
+        "hr": 88.0,
+        "rr": 18.0,
+        "spo2": 99.0,
+        "sbp": 86.0,
+        "dbp": 48.0,
+        "temp_f": 98.1
+      },
+      "evidence": {
+        "presenting_vitals": "p50 of cardiovascular_collapse (allergy_pool, n_stays=15)",
+        "baseline_sbp": "p50 of derived stable vitals",
+        "age_weight": "PLACEHOLDER: not in MIMIC-IV-ED",
+        "feature_prevalence_allergy_pool": {
+          "beta_blocker": {
+            "n": 89,
+            "pct": 8.4
+          },
+          "ace_inhibitor": {
+            "n": 122,
+            "pct": 11.6
+          },
+          "nsaid": {
+            "n": 68,
+            "pct": 6.4
+          },
+          "ambulance_arrival": {
+            "n": 299,
+            "pct": 28.3
+          }
+        },
+        "rationale": "Beta-blocker blunts the epinephrine response; the refractory pathway and glucagon become relevant (RCUK p.39)."
+      }
+    },
+    {
+      "profile_id": "ANA-P7",
+      "difficulty": "hard",
+      "start_state": "cardiovascular_collapse",
+      "sex": "male",
+      "age_years": 74,
+      "weight_kg": 80,
+      "trigger_group": "drug",
+      "trigger_item": "IV contrast",
+      "on_beta_blocker": true,
+      "concurrent_medication": [
+        "beta-blockers"
+      ],
+      "collapse_variant": "unconscious",
+      "arrival_transport": "AMBULANCE",
+      "baseline_sbp": 116.0,
+      "presenting_vitals": {
+        "hr": 88.0,
+        "rr": 18.0,
+        "spo2": 99.0,
+        "sbp": 86.0,
+        "dbp": 48.0,
+        "temp_f": 98.1
+      },
+      "evidence": {
+        "presenting_vitals": "p50 of cardiovascular_collapse (allergy_pool, n_stays=15)",
+        "baseline_sbp": "p50 of derived stable vitals",
+        "age_weight": "PLACEHOLDER: not in MIMIC-IV-ED",
+        "feature_prevalence_allergy_pool": {
+          "beta_blocker": {
+            "n": 89,
+            "pct": 8.4
+          },
+          "male": {
+            "n": 348,
+            "pct": 33.0
+          },
+          "ambulance_arrival": {
+            "n": 299,
+            "pct": 28.3
+          }
+        },
+        "rationale": "Unconscious collapse: no history from the patient, arrest risk, elderly (WAO Fig. 3)."
+      }
+    }
+  ]
+}

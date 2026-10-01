@@ -1,0 +1,444 @@
+{
+  "description": "Per-state vital sign percentiles derived from MIMIC-IV-ED (aggregate only). Vitals_Template min/max = p25/p75; physiology targets = p50.",
+  "generated": "2026-10-01",
+  "method": {
+    "classifier": {
+      "collapse_sbp_below": 90,
+      "airway_spo2_below": 92,
+      "airway_hr_above": 120
+    },
+    "fill": "per-stay forward then backward fill, capped at 8 h, state-blind",
+    "aggregation": "median per (stay, state), then 25th/50th/75th percentile across stays",
+    "stable": "last observation of stays discharged HOME that classify as early_reaction (DERIVED; WAO gives no stable vitals)",
+    "min_cell_size": 10,
+    "cohorts": {
+      "confirmed_anaphylaxis": "ICD-10 T78.0x or T78.2 on any diagnosis",
+      "allergy_pool": "all 1056 stays in the extract (T78.x allergy case pool)"
+    }
+  },
+  "recommended": {
+    "early_reaction": {
+      "cohort": "confirmed_anaphylaxis",
+      "n_stays": 167,
+      "suppressed": false,
+      "percentiles": {
+        "heartrate": {
+          "p25": 78.8,
+          "p50": 89.0,
+          "p75": 97.8
+        },
+        "resprate": {
+          "p25": 16.0,
+          "p50": 18.0,
+          "p75": 18.0
+        },
+        "o2sat": {
+          "p25": 98.0,
+          "p50": 99.0,
+          "p75": 100.0
+        },
+        "sbp": {
+          "p25": 117.0,
+          "p50": 125.0,
+          "p75": 134.0
+        },
+        "dbp": {
+          "p25": 67.2,
+          "p50": 72.5,
+          "p75": 78.8
+        },
+        "temperature": {
+          "p25": 97.7,
+          "p50": 98.1,
+          "p75": 98.5
+        }
+      }
+    },
+    "airway_compromise": {
+      "cohort": "confirmed_anaphylaxis",
+      "n_stays": 32,
+      "suppressed": false,
+      "percentiles": {
+        "heartrate": {
+          "p25": 123.0,
+          "p50": 128.0,
+          "p75": 132.2
+        },
+        "resprate": {
+          "p25": 18.0,
+          "p50": 20.0,
+          "p75": 22.2
+        },
+        "o2sat": {
+          "p25": 95.0,
+          "p50": 98.0,
+          "p75": 99.2
+        },
+        "sbp": {
+          "p25": 121.5,
+          "p50": 131.0,
+          "p75": 143.1
+        },
+        "dbp": {
+          "p25": 68.8,
+          "p50": 78.0,
+          "p75": 85.2
+        },
+        "temperature": {
+          "p25": 97.8,
+          "p50": 98.2,
+          "p75": 98.6
+        }
+      }
+    },
+    "cardiovascular_collapse": {
+      "cohort": "allergy_pool",
+      "n_stays": 15,
+      "suppressed": false,
+      "percentiles": {
+        "heartrate": {
+          "p25": 82.0,
+          "p50": 88.0,
+          "p75": 111.0
+        },
+        "resprate": {
+          "p25": 16.0,
+          "p50": 18.0,
+          "p75": 18.5
+        },
+        "o2sat": {
+          "p25": 97.0,
+          "p50": 99.0,
+          "p75": 99.5
+        },
+        "sbp": {
+          "p25": 84.5,
+          "p50": 86.0,
+          "p75": 88.0
+        },
+        "dbp": {
+          "p25": 40.5,
+          "p50": 48.0,
+          "p75": 56.5
+        },
+        "temperature": {
+          "p25": 98.0,
+          "p50": 98.1,
+          "p75": 98.5
+        }
+      }
+    },
+    "stable": {
+      "cohort": "confirmed_anaphylaxis",
+      "n_stays": 144,
+      "suppressed": false,
+      "percentiles": {
+        "heartrate": {
+          "p25": 72.0,
+          "p50": 80.5,
+          "p75": 88.0
+        },
+        "resprate": {
+          "p25": 16.0,
+          "p50": 16.0,
+          "p75": 18.0
+        },
+        "o2sat": {
+          "p25": 98.0,
+          "p50": 99.0,
+          "p75": 100.0
+        },
+        "sbp": {
+          "p25": 108.0,
+          "p50": 116.0,
+          "p75": 127.2
+        },
+        "dbp": {
+          "p25": 60.0,
+          "p50": 67.0,
+          "p75": 77.0
+        },
+        "temperature": {
+          "p25": 98.0,
+          "p50": 98.2,
+          "p75": 98.5
+        }
+      }
+    }
+  },
+  "by_cohort": {
+    "confirmed_anaphylaxis": {
+      "early_reaction": {
+        "n_stays": 167,
+        "suppressed": false,
+        "percentiles": {
+          "heartrate": {
+            "p25": 78.8,
+            "p50": 89.0,
+            "p75": 97.8
+          },
+          "resprate": {
+            "p25": 16.0,
+            "p50": 18.0,
+            "p75": 18.0
+          },
+          "o2sat": {
+            "p25": 98.0,
+            "p50": 99.0,
+            "p75": 100.0
+          },
+          "sbp": {
+            "p25": 117.0,
+            "p50": 125.0,
+            "p75": 134.0
+          },
+          "dbp": {
+            "p25": 67.2,
+            "p50": 72.5,
+            "p75": 78.8
+          },
+          "temperature": {
+            "p25": 97.7,
+            "p50": 98.1,
+            "p75": 98.5
+          }
+        }
+      },
+      "airway_compromise": {
+        "n_stays": 32,
+        "suppressed": false,
+        "percentiles": {
+          "heartrate": {
+            "p25": 123.0,
+            "p50": 128.0,
+            "p75": 132.2
+          },
+          "resprate": {
+            "p25": 18.0,
+            "p50": 20.0,
+            "p75": 22.2
+          },
+          "o2sat": {
+            "p25": 95.0,
+            "p50": 98.0,
+            "p75": 99.2
+          },
+          "sbp": {
+            "p25": 121.5,
+            "p50": 131.0,
+            "p75": 143.1
+          },
+          "dbp": {
+            "p25": 68.8,
+            "p50": 78.0,
+            "p75": 85.2
+          },
+          "temperature": {
+            "p25": 97.8,
+            "p50": 98.2,
+            "p75": 98.6
+          }
+        }
+      },
+      "cardiovascular_collapse": {
+        "n_stays": "<10",
+        "suppressed": true,
+        "percentiles": {}
+      }
+    },
+    "allergy_pool": {
+      "early_reaction": {
+        "n_stays": 1051,
+        "suppressed": false,
+        "percentiles": {
+          "heartrate": {
+            "p25": 75.0,
+            "p50": 84.5,
+            "p75": 94.5
+          },
+          "resprate": {
+            "p25": 16.0,
+            "p50": 18.0,
+            "p75": 18.0
+          },
+          "o2sat": {
+            "p25": 98.0,
+            "p50": 99.0,
+            "p75": 100.0
+          },
+          "sbp": {
+            "p25": 120.0,
+            "p50": 130.0,
+            "p75": 142.0
+          },
+          "dbp": {
+            "p25": 69.0,
+            "p50": 76.0,
+            "p75": 84.0
+          },
+          "temperature": {
+            "p25": 97.6,
+            "p50": 98.1,
+            "p75": 98.5
+          }
+        }
+      },
+      "airway_compromise": {
+        "n_stays": 91,
+        "suppressed": false,
+        "percentiles": {
+          "heartrate": {
+            "p25": 123.0,
+            "p50": 128.0,
+            "p75": 133.5
+          },
+          "resprate": {
+            "p25": 17.5,
+            "p50": 19.0,
+            "p75": 21.5
+          },
+          "o2sat": {
+            "p25": 95.0,
+            "p50": 98.0,
+            "p75": 100.0
+          },
+          "sbp": {
+            "p25": 121.0,
+            "p50": 135.0,
+            "p75": 147.0
+          },
+          "dbp": {
+            "p25": 71.5,
+            "p50": 81.0,
+            "p75": 93.0
+          },
+          "temperature": {
+            "p25": 97.8,
+            "p50": 98.2,
+            "p75": 98.7
+          }
+        }
+      },
+      "cardiovascular_collapse": {
+        "n_stays": 15,
+        "suppressed": false,
+        "percentiles": {
+          "heartrate": {
+            "p25": 82.0,
+            "p50": 88.0,
+            "p75": 111.0
+          },
+          "resprate": {
+            "p25": 16.0,
+            "p50": 18.0,
+            "p75": 18.5
+          },
+          "o2sat": {
+            "p25": 97.0,
+            "p50": 99.0,
+            "p75": 99.5
+          },
+          "sbp": {
+            "p25": 84.5,
+            "p50": 86.0,
+            "p75": 88.0
+          },
+          "dbp": {
+            "p25": 40.5,
+            "p50": 48.0,
+            "p75": 56.5
+          },
+          "temperature": {
+            "p25": 98.0,
+            "p50": 98.1,
+            "p75": 98.5
+          }
+        }
+      }
+    }
+  },
+  "prevalence": {
+    "confirmed_anaphylaxis": {
+      "n_stays": 169,
+      "features": {
+        "male": {
+          "n": 57,
+          "pct": 33.7
+        },
+        "ambulance_arrival": {
+          "n": 61,
+          "pct": 36.1
+        },
+        "food_anaphylaxis_icd": {
+          "n": 109,
+          "pct": 64.5
+        },
+        "epinephrine_given_in_ed": {
+          "n": 98,
+          "pct": 58.0
+        },
+        "admitted": {
+          "n": 20,
+          "pct": 11.8
+        },
+        "beta_blocker": {
+          "n": "<10",
+          "pct": null
+        },
+        "ace_inhibitor": {
+          "n": 10,
+          "pct": 5.9
+        },
+        "nsaid": {
+          "n": "<10",
+          "pct": null
+        },
+        "asthma_proxy": {
+          "n": 29,
+          "pct": 17.2
+        }
+      }
+    },
+    "allergy_pool": {
+      "n_stays": 1056,
+      "features": {
+        "male": {
+          "n": 348,
+          "pct": 33.0
+        },
+        "ambulance_arrival": {
+          "n": 299,
+          "pct": 28.3
+        },
+        "food_anaphylaxis_icd": {
+          "n": 109,
+          "pct": 10.3
+        },
+        "epinephrine_given_in_ed": {
+          "n": 273,
+          "pct": 25.9
+        },
+        "admitted": {
+          "n": 99,
+          "pct": 9.4
+        },
+        "beta_blocker": {
+          "n": 89,
+          "pct": 8.4
+        },
+        "ace_inhibitor": {
+          "n": 122,
+          "pct": 11.6
+        },
+        "nsaid": {
+          "n": 68,
+          "pct": 6.4
+        },
+        "asthma_proxy": {
+          "n": 151,
+          "pct": 14.3
+        }
+      }
+    }
+  }
+}
