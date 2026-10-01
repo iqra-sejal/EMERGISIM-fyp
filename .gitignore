@@ -1,0 +1,15 @@
+# MIMIC-IV-ED derived data: PhysioNet DUA, never commit
+data/*.json
+data/mimic*/
+*.csv.gz
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+
+# Trained models
+*.zip
+logs/

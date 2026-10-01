@@ -2,7 +2,7 @@
 
 Full title: **EmergiSim: A Virtual AI-Powered Environment for Emergency Response Education**
 
-Recovered from the team's Claude project memory (project "FYP", last updated 2026-09-25). This file is the single source of truth for decisions made so far. Update it when a decision changes.
+Recovered from the team's Claude project memory (project "FYP", last updated 2026-09-25). Background and history only. The authoritative technical spec is `docs/TECHNICAL_SPEC.md`; where they disagree, the spec wins.
 
 ## Team
 
@@ -123,6 +123,6 @@ Note: MIMIC data falls under the PhysioNet credentialed data use agreement. **Ne
 
 ## Inconsistencies to resolve
 
-- LLM backbone: the project memory says Claude (`claude-sonnet-4-20250514`), while a CV/application summary says "Claude API/GPT-4o". Confirm which is final.
+- LLM backbone: resolved. The technical spec confirms Claude (`claude-sonnet-4-20250514`); the "Claude API/GPT-4o" wording in an older CV summary is outdated.
 - `claude-sonnet-4-20250514` is an older model. Consider re-evaluating against current Claude models before implementation.
 - Supervisor surname spelling: "Akbar" vs "Akhbar".
